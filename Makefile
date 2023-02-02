@@ -28,8 +28,12 @@ $(FN).html: $(FN).xml
 $(FN).txt: $(FN).xml
 	xml2rfc $(FN).xml
 
-$(FN).xml: draft-ietf-teep-protocol.md
+$(FN).xml: draft-ietf-teep-protocol.md trim-cddl
 	kramdown-rfc2629 draft-ietf-teep-protocol.md > $(FN).xml
+
+.PHONY: trim-cddl
+trim-cddl:
+	make -C cddl trim-cddl
 
 .PHONY: clean
 clean:

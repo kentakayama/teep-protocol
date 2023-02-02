@@ -224,31 +224,8 @@ otherwise.
 TEEP messages are protected by the COSE_Sign1 or COSE_Sign structure as described in {{ciphersuite}}.
 The TEEP protocol messages are described in CDDL format {{RFC8610}} below.
 
-~~~~
-teep-message = $teep-message-type .within teep-message-framework
-
-teep-message-framework = [
-  type: $teep-type / $teep-type-extension,
-  options: { * teep-option },
-  * any; further elements, e.g., for data-item-requested
-]
-
-teep-option = (uint => any)
-
-; messages defined below:
-$teep-message-type /= query-request
-$teep-message-type /= query-response
-$teep-message-type /= update
-$teep-message-type /= teep-success
-$teep-message-type /= teep-error
-
-; message type numbers, uint (0..23)
-$teep-type = uint .size 1
-TEEP-TYPE-query-request = 1
-TEEP-TYPE-query-response = 2
-TEEP-TYPE-update = 3
-TEEP-TYPE-teep-success = 5
-TEEP-TYPE-teep-error = 6
+~~~~ CDDL
+{::include cddl/teep-message.cddl}
 ~~~~
 
 ## Creating and Validating TEEP Messages
@@ -321,20 +298,8 @@ Like other TEEP messages, the QueryRequest message is
 signed, and the relevant CDDL snippet is shown below. 
 The complete CDDL structure is shown in Appendix C.
 
-~~~~
-query-request = [
-  type: TEEP-TYPE-query-request,
-  options: {
-    ? token => bstr .size (8..64),
-    ? supported-freshness-mechanisms => [ + $freshness-mechanism ],
-    ? challenge => bstr .size (8..512),
-    ? versions => [ + version ],
-    * $$query-request-extensions,
-    * $$teep-option-extensions
-  },
-  supported-cipher-suites: [ + $cipher-suite ],
-  data-item-requested: uint .bits data-item-requested
-]
+~~~~ CDDL
+{::include cddl/query-request.cddl}
 ~~~~
 
 The message has the following fields: 
@@ -426,30 +391,10 @@ Like other TEEP messages, the QueryResponse message is
 signed, and the relevant CDDL snippet is shown below. 
 The complete CDDL structure is shown in Appendix C.
 
-~~~~
-query-response = [
-  type: TEEP-TYPE-query-response,
-  options: {
-    ? token => bstr .size (8..64),
-    ? selected-cipher-suite => $cipher-suite,
-    ? selected-version => version,
-    ? attestation-payload-format => text,
-    ? attestation-payload => bstr,
-    ? suit-reports => [ + SUIT_Report ],
-    ? tc-list => [ + system-property-claims ],
-    ? requested-tc-list => [ + requested-tc-info ],
-    ? unneeded-manifest-list => [ + SUIT_Component_Identifier ],
-    ? ext-list => [ + ext-info ],
-    * $$query-response-extensions,
-    * $$teep-option-extensions
-  }
-]
+~~~~ CDDL
+{::include cddl/query-response.cddl}
 
-requested-tc-info = {
-  component-id => SUIT_Component_Identifier,
-  ? tc-manifest-sequence-number => .within uint .size 8,
-  ? have-binary => bool
-}
+{::include cddl/requested-tc-info.cddl}
 ~~~~
 
 The QueryResponse message has the following fields:
@@ -633,19 +578,8 @@ Like other TEEP messages, the Update message is
 signed, and the relevant CDDL snippet is shown below. 
 The complete CDDL structure is shown in Appendix C.
 
-~~~~
-update = [
-  type: TEEP-TYPE-update,
-  options: {
-    ? token => bstr .size (8..64),
-    ? unneeded-manifest-list => [ + SUIT_Component_Identifier ],
-    ? manifest-list => [ + bstr .cbor SUIT_Envelope ],
-    ? attestation-payload-format => text,
-    ? attestation-payload => bstr,
-    * $$update-extensions,
-    * $$teep-option-extensions
-  }
-]
+~~~~ CDDL
+{::include cddl/update.cddl}
 ~~~~
 
 The Update message has the following fields:
@@ -958,17 +892,8 @@ Like other TEEP messages, the Success message is
 signed, and the relevant CDDL snippet is shown below. 
 The complete CDDL structure is shown in Appendix C.
 
-~~~~
-teep-success = [
-  type: TEEP-TYPE-teep-success,
-  options: {
-    ? token => bstr .size (8..64),
-    ? msg => text .size (1..128),
-    ? suit-reports => [ + SUIT_Report ],
-    * $$teep-success-extensions,
-    * $$teep-option-extensions
-  }
-]
+~~~~ CDDL
+{::include cddl/teep-success.cddl}
 ~~~~
 
 The Success message has the following fields:
@@ -1007,21 +932,8 @@ Like other TEEP messages, the Error message is
 signed, and the relevant CDDL snippet is shown below. 
 The complete CDDL structure is shown in Appendix C.
 
-~~~~
-teep-error = [
-  type: TEEP-TYPE-teep-error,
-  options: {
-     ? token => bstr .size (8..64),
-     ? err-msg => text .size (1..128),
-     ? supported-cipher-suites => [ + $cipher-suite ],
-     ? supported-freshness-mechanisms => [ + $freshness-mechanism ],
-     ? versions => [ + version ],
-     ? suit-reports => [ + SUIT_Report ],
-     * $$teep-error-extensions,
-     * $$teep-option-extensions
-  },
-  err-code: 0..23
-]
+~~~~ CDDL
+{::include cddl/teep-error.cddl}
 ~~~~
 
 The Error message has the following fields:
@@ -1381,23 +1293,8 @@ which is used to specify an ordered set of operations (e.g., sign) done as part 
 Although this specification only specifies the use of signing and relies on payload encryption to protect sensitive
 information, future extensions might specify support for encryption and/or MAC operations if needed.
 
-~~~~
-$cipher-suite /= teep-cipher-suite-sign1-es256
-$cipher-suite /= teep-cipher-suite-sign1-eddsa
-
-; The following two cipher suites have only a single operation each.
-; Other cipher suites may be defined to have multiple operations.
-
-teep-cipher-suite-sign1-es256 = [ teep-operation-sign1-es256 ]
-teep-cipher-suite-sign1-eddsa = [ teep-operation-sign1-eddsa ]
-
-teep-operation-sign1-es256 = [ cose-sign1, cose-alg-es256 ]
-teep-operation-sign1-eddsa = [ cose-sign1, cose-alg-eddsa ]
-
-cose-sign1 = 18      ; CoAP Content-Format value
-
-cose-alg-es256 = -7  ; ECDSA w/ SHA-256
-cose-alg-eddsa = -8  ; EdDSA
+~~~~ CDDL
+{::include cddl/cipher-suite.cddl}
 ~~~~
 
 Each operation in a given cipher suite has two elements:
@@ -1452,12 +1349,8 @@ an IANA registered freshness mechanism (see the IANA Considerations section of
 This document uses the following freshness mechanisms which may be added to in the
 future by TEEP extensions:
 
-~~~~
-FRESHNESS_NONCE = 0
-FRESHNESS_TIMESTAMP = 1
-
-$freshness-mechanism /= FRESHNESS_NONCE
-$freshness-mechanism /= FRESHNESS_TIMESTAMP
+~~~~ CDDL
+{::include cddl/freshness-mechanism.cddl}
 ~~~~
 
 An implementation MUST support the Nonce mechanism and MAY support additional
