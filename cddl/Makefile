@@ -74,6 +74,37 @@ validate-teep-cddl: $(CONCATENATED_CDDL) ../cbor/query_request.diag.bin
 gen-cddl: cat-cddl $(CONCATENATED_CDDL)
 	cddl $(CONCATENATED_CDDL) generate
 
+TRIMMED_CDDLS := teep-message.cddl query-request.cddl query-response.cddl requested-tc-info.cddl update.cddl teep-success.cddl teep-error.cddl cipher-suite.cddl freshness-mechanism.cddl
+
+.PHONY: trim-cddl
+trim-cddl: $(TRIMMED_CDDLS)
+teep-message.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^teep-message = /,/TEEP-TYPE-teep-error =/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+query-request.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^query-request = \[/,/^]/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+query-response.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^query-response = \[/,/^]/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+requested-tc-info.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^requested-tc-info = {/,/^}/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+update.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^update = \[/,/^]/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+teep-success.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^teep-success = \[/,/^]/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+teep-error.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^teep-error = \[/,/^]/ p' $(TEEP_PROTOCOL_CDDL) > $@
+
+cipher-suite.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^;MANDATORY.*COSE$$/,/^; freshness-mechanisms/ p' $(TEEP_PROTOCOL_CDDL) | head -n -2 > $@
+
+freshness-mechanism.cddl: $(TEEP_PROTOCOL_CDDL)
+	sed -n -e '/^; freshness-mechanisms/,/^query-response = \[/ p' $(TEEP_PROTOCOL_CDDL) | head -n -2 > $@
+
 .PHONY: clean
 clean:
-	$(RM) $(CONCATENATED_CDDL) $(CONCATENATED_UNTAGGED_SUIT_CDDL) $(COSE_CDDL) $(COSE_XML) $(SUIT_MANIFEST_CDDL) $(SUIT_TRUST_DOMAINS_CDDL) $(SUIT_REPORT_CDDL)
+	$(RM) $(CONCATENATED_CDDL) $(CONCATENATED_UNTAGGED_SUIT_CDDL) $(COSE_CDDL) $(COSE_XML) $(SUIT_MANIFEST_CDDL) $(SUIT_TRUST_DOMAINS_CDDL) $(SUIT_REPORT_CDDL) $(TRIMMED_CDDLS)
