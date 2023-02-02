@@ -78,6 +78,7 @@ TRIMMED_CDDLS := teep-message.cddl query-request.cddl query-response.cddl reques
 
 .PHONY: trim-cddl
 trim-cddl: $(TRIMMED_CDDLS)
+
 teep-message.cddl: $(TEEP_PROTOCOL_CDDL)
 	sed -n -e '/^teep-message = /,/TEEP-TYPE-teep-error =/ p' $(TEEP_PROTOCOL_CDDL) > $@
 
