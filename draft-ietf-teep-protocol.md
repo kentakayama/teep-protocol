@@ -67,13 +67,13 @@ author:
  -
   ins: A. Tsukamoto
   name: Akira Tsukamoto
-  org: ''
+  org: ALAXALA Networks Corp.
   street: ''
   city: ''
   region: ''
   code: ''
   country: JP
-  email: akira.tsukamoto@gmail.com
+  email: akira.tsukamoto@alaxala.com
 
 normative:
   RFC9052:
@@ -82,9 +82,8 @@ normative:
   RFC8747:
   RFC8949:
   RFC9052:
-  RFC9334:
+  I-D.ietf-cose-key-thumbprint:
   I-D.ietf-rats-eat:
-  I-D.ietf-rats-reference-interaction-models:
   I-D.ietf-suit-manifest:
   I-D.ietf-suit-mti:
   I-D.ietf-suit-trust-domains:
@@ -97,12 +96,14 @@ normative:
 informative:
   I-D.ietf-suit-firmware-encryption: 
   I-D.ietf-rats-ar4si:
-  I-D.ietf-teep-architecture: 
+  I-D.ietf-rats-reference-interaction-models:
+  RFC9397:
   I-D.ietf-rats-eat-media-type:
   I-D.ietf-rats-concise-ta-stores:
   RFC8610: 
   RFC8915:
   RFC5934:
+  RFC9334:
 
 --- abstract
 
@@ -130,7 +131,7 @@ This document specifies the protocol for communicating between a TAM
 and a TEEP Agent.
 
 The Trusted Execution Environment Provisioning (TEEP) architecture
-document {{I-D.ietf-teep-architecture}} provides design
+document {{RFC9397}} provides design
 guidance and introduces the
 necessary terminology.
 
@@ -139,7 +140,7 @@ necessary terminology.
 
 {::boilerplate bcp14}
 
-This specification re-uses the terminology defined in {{I-D.ietf-teep-architecture}}.
+This specification re-uses the terminology defined in {{RFC9397}}.
 
 As explained in Section 4.4 of that document, the TEEP protocol treats
 each Trusted Application (TA), any dependencies the TA has, and personalization data as separate
@@ -282,7 +283,7 @@ To create a TEEP message, the following steps are performed.
 ### Validating a TEEP Message {#validation}
 
 When TEEP message is received (see the ProcessTeepMessage conceptual API
-defined in {{I-D.ietf-teep-architecture}} section 6.2.1),
+defined in {{RFC9397}} section 6.2.1),
 the following validation steps are performed. If any of
 the listed steps fail, then the TEEP message MUST be rejected.
 
@@ -314,13 +315,13 @@ information from the TEEP Agent, such as
 the features supported by the TEEP Agent, including
 cipher suites and protocol versions. Additionally,
 the TAM can selectively request data items from the
-TEEP Agent via the request parameter. Currently,
+TEEP Agent by using the data-item-requested parameter. Currently,
 the following features are supported:
 
- - Request for attestation information,
+ - Request for attestation information of the TEEP Agent,
  - Listing supported extensions,
  - Querying installed Trusted Components, and
- - Listing supported SUIT commands.
+ - Request for logging information in SUIT Reports.
 
 Like other TEEP messages, the QueryRequest message is
 signed, and the relevant CDDL snippet is shown below.
@@ -334,6 +335,9 @@ query-request = [
     ? supported-freshness-mechanisms => [ + $freshness-mechanism ],
     ? challenge => bstr .size (8..512),
     ? versions => [ + version ],
+    ? attestation-payload-format => text,
+    ? attestation-payload => bstr,
+    ? suit-reports => [ + bstr ],
     * $$query-request-extensions,
     * $$teep-option-extensions
   },
@@ -437,6 +441,36 @@ versions
   A value of 0 refers to the current version of the TEEP protocol.
   If this field is not present, it is to be treated the same as if
   it contained only version 0.
+
+attestation-payload-format
+: The attestation-payload-format parameter indicates the IANA Media Type of the
+  attestation-payload parameter, where media type parameters are permitted after
+  the media type.  For protocol version 0, the absence of this parameter indicates that
+  the format is "application/eat+cwt; eat_profile=https://datatracker.ietf.org/doc/html/draft-ietf-teep-protocol-12" (see {{I-D.ietf-rats-eat-media-type}}
+  for further discussion).
+  (RFC-editor: upon RFC publication, replace URI above with
+  "https://www.rfc-editor.org/info/rfcXXXX" where XXXX is the RFC number
+  of this document.)
+  It MUST be present if the attestation-payload parameter
+  is present and the format is not an EAT in CWT format with the profile
+  defined below in {{eat}}.
+
+attestation-payload
+: The attestation-payload parameter contains Evidence or an Attestation Result
+  for the TEEP Agent to use to perform attestation of the TAM.
+  If the attestation-payload-format parameter is absent,
+  the attestation payload contained in this parameter MUST be
+  an Entity Attestation Token following the encoding
+  defined in {{I-D.ietf-rats-eat}}.  See {{attestation}} for further discussion.
+
+suit-reports
+: If present, the suit-reports parameter contains a set of "boot" (including
+  starting an executable in an OS context) time SUIT Reports of the TAM
+  as defined by SUIT_Report in Section 4 of {{I-D.ietf-suit-report}},
+  encoded using COSE as discussed in {{eat-suit-ciphersuite}}.
+  SUIT Reports can be useful in QueryRequest messages to
+  pass additional information about the TAM to the TEEP Agent without depending on a Verifier including
+  the relevant information in the TAM's Attestation Results.
 
 ## QueryResponse Message {#query-response}
 
@@ -551,7 +585,7 @@ requested-tc-list
   Component as a dependency.  Requested Trusted Components are expressed in
   the form of requested-tc-info objects.
   A TEEP Agent can get this information from the RequestTA conceptual API
-  defined in {{I-D.ietf-teep-architecture}} section 6.2.1.
+  defined in {{RFC9397}} section 6.2.1.
 
 unneeded-manifest-list
 : The unneeded-manifest-list parameter enumerates the SUIT manifests whose components are
@@ -562,7 +596,7 @@ unneeded-manifest-list
   itself, which is different from the Component ID of a component installed by the manifest,
   see {{I-D.ietf-suit-trust-domains}} for more discussion).
   A TEEP Agent can get this information from the UnrequestTA conceptual API
-  defined in {{I-D.ietf-teep-architecture}} section 6.2.1.
+  defined in {{RFC9397}} section 6.2.1.
 
 ext-list
 : The ext-list parameter lists the supported extensions. This document does not
@@ -582,14 +616,14 @@ tc-manifest-sequence-number
   the Trusted Component.  If not present, indicates that any sequence number will do.
 
 have-binary
-: If present with a value of true, indicates that the TEEP agent already has
+: If present with a value of true, indicates that the TEEP Agent already has
   the Trusted Component binary and only needs an Update message with a SUIT manifest
   that authorizes installing it.  If have-binary is true, the
   tc-manifest-sequence-number field MUST be present.
 
 ### Evidence and Attestation Results {#attestation}
 
-Section 7 of {{I-D.ietf-teep-architecture}} lists information that may appear
+Section 7 of {{RFC9397}} lists information that may appear
 in Evidence depending on the circumstance.  However, the Evidence is
 opaque to the TEEP protocol and there are no formal requirements on the contents
 of Evidence.
@@ -597,7 +631,7 @@ of Evidence.
 TAMs however consume Attestation Results and do need enough information therein to
 make decisions on how to remediate a TEE that is out of compliance, or update a TEE
 that is requesting an authorized change.  To do so, the information in
-Section 7 of {{I-D.ietf-teep-architecture}} is often required depending on the policy.
+Section 7 of {{RFC9397}} is often required depending on the policy.
 
 Attestation Results SHOULD use Entity Attestation Tokens (EATs).  Use of any other
 format, such as a widely implemented format for a specific processor vendor, is
@@ -750,7 +784,7 @@ Trusted Component to actually run, so the manifest signature could be
 checked at install time or load (or run) time or both, and this checking is
 done by the TEE independent of whether TEEP is used or some other update
 mechanism.
-See section 5 of {{I-D.ietf-teep-architecture}} for further discussion.
+See section 5 of {{RFC9397}} for further discussion.
 
 
 The Update Message has a SUIT_Envelope containing SUIT manifests. Following are some example scenarios using SUIT manifests in the Update Message.
@@ -1008,6 +1042,7 @@ teep-error = [
      ? err-msg => text .size (1..128),
      ? supported-teep-cipher-suites => [ + $teep-cipher-suite ],
      ? supported-freshness-mechanisms => [ + $freshness-mechanism ],
+     ? challenge => bstr .size (8..512),
      ? versions => [ + version ],
      ? suit-reports => [ + SUIT_Report ],
      * $$teep-error-extensions,
@@ -1023,6 +1058,7 @@ ERR_UNSUPPORTED_FRESHNESS_MECHANISMS = 3
 ERR_UNSUPPORTED_MSG_VERSION = 4
 ERR_UNSUPPORTED_CIPHER_SUITES = 5
 ERR_BAD_CERTIFICATE = 6
+ERR_ATTESTATION_REQUIRED = 7
 ERR_CERTIFICATE_EXPIRED = 9
 ERR_TEMPORARY_ERROR = 10
 ERR_MANIFEST_PROCESSING_FAILED = 17
@@ -1054,6 +1090,18 @@ supported-freshness-mechanisms
   Details about the encoding can be found in {{freshness-mechanisms}}.
   This otherwise optional parameter MUST be returned if err-code is ERR_UNSUPPORTED_FRESHNESS_MECHANISMS.
 
+challenge
+: The challenge field is an optional parameter used for ensuring the freshness of
+  attestation evidence included with a QueryRequest message.
+  When a challenge is provided in the Error message and Evidence in the form of an EAT is
+  returned with a QueryRequest message then the challenge contained in the Error message
+  MUST be used to generate the EAT, by copying the challenge value into the eat_nonce claim, as described in the
+  EAT profile {{eat}}, if the nonce-based freshness mechanism is used.
+  For more details see {{freshness-mechanisms}}.
+
+  If any format other than EAT is used, it is up to that
+  format to define the use of the challenge field.
+
 versions
 : The versions parameter enumerates the TEEP protocol version(s) supported by the TEEP
   Agent. This otherwise optional parameter MUST be returned if err-code is ERR_UNSUPPORTED_MSG_VERSION.
@@ -1075,23 +1123,25 @@ This specification defines the following initial error messages:
 
 {: vspace='0'}
 ERR_PERMANENT_ERROR (1)
-: The TEEP
-  request contained incorrect fields or fields that are inconsistent with
+: The received TEEP
+  message contained incorrect fields or fields that are inconsistent with
   other fields.
   For diagnosis purposes it is RECOMMMENDED to identify the failure reason
-  in the error message.
-  A TAM receiving this error might refuse to communicate further with
-  the TEEP Agent for some period of time until it has reason to believe
+  in the error message field.
+  A TEEP implementation receiving this error might refuse to communicate further with
+  the problematic TEEP message sender, by silently dropping any TEEP messages
+  received, for some period of time until it has reason to believe
   it is worth trying again, but it should take care not to give up on
   communication.  In contrast, ERR_TEMPORARY_ERROR is an indication
   that a more aggressive retry is warranted.
 
 ERR_UNSUPPORTED_EXTENSION (2)
-: The TEEP Agent does not support an extension included in the request
-  message.
+: The TEEP implementation does not support an extension included in the
+  TEEP message it received.
   For diagnosis purposes it is RECOMMMENDED to identify the unsupported
-  extension in the error message.
-  A TAM receiving this error might retry the request without using extensions.
+  extension in the error message field.
+  A TAM implementation receiving this error might retry sending the last message it sent to
+  the sender of this error, without using any TEEP extensions.
 
 ERR_UNSUPPORTED_FRESHNESS_MECHANISMS (3)
 : The TEEP Agent does not
@@ -1100,8 +1150,8 @@ ERR_UNSUPPORTED_FRESHNESS_MECHANISMS (3)
   set of supported freshness mechanisms in the request message.
 
 ERR_UNSUPPORTED_MSG_VERSION (4)
-: The TEEP Agent does not
-  support the TEEP protocol version indicated in the request message.
+: The TEEP implementation does not
+  support the TEEP protocol version indicated in the received message.
   A TAM receiving this error might retry the request using a different
   TEEP protocol version.
 
@@ -1114,21 +1164,25 @@ ERR_UNSUPPORTED_CIPHER_SUITES (5)
 ERR_BAD_CERTIFICATE (6)
 : Processing of a certificate failed. For diagnosis purposes it is
   RECOMMMENDED to include information about the failing certificate
-  in the error message.  For example, the certificate was of an
+  in the error message field.  For example, the certificate was of an
   unsupported type, or the certificate was revoked by its signer.
-  A TAM receiving this error might attempt to use an alternate certificate.
+  A TEEP implementation receiving this error might attempt to use an alternate certificate.
+
+ERR_ATTESTATION_REQUIRED (7)
+: Indicates that the TEEP implementation sending this error requires
+  attestation of the TEEP imlementation receiving this error.
 
 ERR_CERTIFICATE_EXPIRED (9)
 : A certificate has expired or is not currently
   valid.
-  A TAM receiving this error might attempt to renew its certificate
+  A TEEP implementation receiving this error might attempt to renew its certificate
   before using it again.
 
 ERR_TEMPORARY_ERROR (10)
 : A miscellaneous
-  temporary error, such as a memory allocation failure, occurred while processing the request message.
-  A TAM receiving this error might retry the same request at a later point
-  in time.
+  temporary error, such as a memory allocation failure, occurred while processing the TEEP message.
+  A TEEP implementation receiving this error might retry the last message it sent to the sender
+  of this error at some later point, which is up to the implementation.
 
 ERR_MANIFEST_PROCESSING_FAILED (17)
 : The TEEP Agent encountered one or more manifest processing failures.
@@ -1179,7 +1233,9 @@ of this document.)
 * Detached EAT Bundle Support: DEB use is permitted.
 * Key Identification: COSE Key ID (kid) is used, where
   the key ID is the hash of a public key (where the public key may be
-  used as a raw public key, or in a certificate).  See {{attestation-result}}
+  used as a raw public key, or in a certificate) as specified in
+  {{I-D.ietf-cose-key-thumbprint}}.  See {{attestation-result-tam}}
+  and {{attestation-result-agent}} for
   discussion on the choice of hash algorithm.
 * Endorsement Identification: Optional, but semantics are the same
   as in Verification Key Identification.
@@ -1297,12 +1353,13 @@ have-binary = 18
 suit-reports = 19
 token = 20
 supported-freshness-mechanisms = 21
+err-code = 23
 ~~~~
 
 # Behavior Specification
 
 Behavior is specified in terms of the conceptual APIs defined in
-section 6.2.1 of {{I-D.ietf-teep-architecture}}.
+section 6.2.1 of {{RFC9397}}.
 
 ## TAM Behavior {#tam}
 
@@ -1326,7 +1383,8 @@ identify the devices and/or a device to identify TAMs or Trusted Components.
 If a QueryResponse message is received, the TAM verifies the presence of any parameters
 required based on the data-items-requested in the QueryRequest, and also validates that
 the nonce in any SUIT Report matches the token sent in the QueryRequest message if a token
-was present.  If these requirements are not met, the TAM drops the message.  It may also do
+was present.  If these requirements are not met, the TAM drops the message and sends an
+Update message containing an appropriate err-code and err-msg.  It may also do
 additional implementation specific actions such as logging the results.  If the requirements
 are met, processing continues as follows.
 
@@ -1335,15 +1393,15 @@ checks whether it contains Evidence or an Attestation Result by inspecting the a
 parameter.  The media type defined in {{eat}} indicates an Attestation Result, though future
 extensions might also indicate other Attestation Result formats in the future. Any other unrecognized
 value indicates Evidence.  If it contains an Attestation Result, processing continues as in
-{{attestation-result}}.
+{{attestation-result-tam}}.
 
 If the QueryResponse is instead determined to contain Evidence, the TAM passes
 the Evidence (via some mechanism out of scope of this document) to an attestation Verifier
 (see {{RFC9334}})
 to determine whether the Agent is in a trustworthy state.  Once the TAM receives an Attestation
-Result from the Verifier, processing continues as in {{attestation-result}}.
+Result from the Verifier, processing continues as in {{attestation-result-tam}}.
 
-#### Handling an Attestation Result {#attestation-result}
+#### Handling an Attestation Result {#attestation-result-tam}
 
 The Attestation Result must first be validated as follows:
 
@@ -1363,9 +1421,11 @@ need to be installed, updated, or deleted, if any.  There are in typically three
 
 1. Attestation failed. This indicates that the rest of the information in the QueryResponse
    cannot necessarily be trusted, as the TEEP Agent may not be healthy (or at least up to date).
-   In this case, the TAM can attempt to use TEEP to update any Trusted Components (e.g., firmware,
+   In this case, the TAM might attempt to use TEEP to update any Trusted Components (e.g., firmware,
    the TEEP Agent itself, etc.) needed to get the TEEP Agent back into an up-to-date state that
-   would allow attestation to succeed.
+   would allow attestation to succeed.  If the TAM does not have permission to update such components
+   (this can happen if different TAMs manage different components in the device), the TAM instead
+   responds with an Update message containing an appropriate err-msg, and err-code set to ERR_ATTESTATION_REQUIRED.
 2. Attestation succeeded (so the QueryResponse information can be accepted as valid), but the set
    of Trusted Components needs to be updated based on TAM policy changes or requests from the TEEP Agent.
 3. Attestation succeeded, and no changes are needed.
@@ -1384,7 +1444,7 @@ hours or longer before the device has sufficient access.  A different
 freshness mechanism, such as timestamps, might be more appropriate in such
 cases.
 
-If no Trusted Components need to be installed, updated, or deleted, but the QueryRequest included
+If no Trusted Components need to be installed, updated, or deleted, but the QueryResponse included
 Evidence, the TAM MAY (e.g., based on attestation-payload-format parameters received from the TEEP Agent
 in the QueryResponse) still send an Update message with no SUIT Manifests, to pass the Attestation
 Result back to the TEEP Agent.
@@ -1396,6 +1456,9 @@ the nonce in any SUIT Report matches the token sent in the Update message,
 and drops the message if it does not match.  Otherwise, the TAM handles
 the update in any implementation specific way, such as updating any locally
 cached information about the state of the TEEP Agent, or logging the results.
+
+If an Error message is received with the error code ERR_ATTESTATION_REQUIRED, it indicates that the TEEP Agent is requesting attestation of the TAM.
+In this case, the TAM MUST send another QueryRequest with an attestation-payload and optionally a suit-report to the TEEP Agent.
 
 If any other Error message is received, the TAM can handle it in any implementation
 specific way, but {{error-message-def}} provides recommendations for such handling.
@@ -1440,6 +1503,8 @@ When a QueryRequest message is received, the Agent responds with a
 QueryResponse message if all fields were understood, or an Error message
 if any error was encountered.
 
+If the TEEP Agent requires attesting the TAM, the TEEP Agent MUST send the Error Message with the error code ERR_ATTESTATION_REQUIRED supplying the supported-freshness-mechanisms or the challenge.
+
 When an Update message is received, the Agent attempts to unlink any
 SUIT manifests listed in the unneeded-manifest-list field of the message,
 and responds with an Error message if any error was encountered.
@@ -1454,6 +1519,46 @@ It is important to note that the
 Update Procedure requires resolving and installing any dependencies
 indicated in the manifest, which may take some time, and the Success
 or Error message is generated only after completing the Update Procedure.
+
+### Handling a QueryRequest Message
+
+When a QueryRequest message is received, it is processed as follows.
+
+If the TEEP Agent requires attesting the TAM and the QueryRequest message did not
+contain an attestation-payload, the TEEP Agent MUST send an Error Message
+with the error code ERR_ATTESTATION_REQUIRED supplying the supported-freshness-mechanisms and challenge if needed.
+Otherwise, processing continues as follows.
+
+If the TEEP Agent requires attesting the TAM and the QueryRequest message did
+contain an an attestation-payload, the TEEP Agent checks whether it contains Evidence or an
+Attestation Result by inspecting the attestation-payload-format
+parameter.  The media type defined in {{eat}} indicates an Attestation Result, though future
+extensions might also indicate other Attestation Result formats in the future. Any other unrecognized
+value indicates Evidence.  If it contains an Attestation Result, processing continues as in
+{{attestation-result-agent}}.
+
+If the QueryRequest is instead determined to contain Evidence, the TEEP Agent passes
+the Evidence (via some mechanism out of scope of this document) to an attestation Verifier
+(see {{RFC9334}})
+to determine whether the TAM is in a trustworthy state.  Once the TEEP Agent receives an Attestation
+Result from the Verifier, processing continues as in {{attestation-result-agent}}.
+
+Once the Attestation Result is handled, or if the TEEP Agent does not require attesting the TAM,
+the Agent responds with a
+QueryResponse message if all fields were understood, or an Error message
+if any error was encountered.
+
+#### Handling an Attestation Result {#attestation-result-agent}
+
+The Attestation Result must first be validated as follows:
+
+1. Verify that the Attestation Result was signed by a Verifier that the TEEP Agent trusts.
+2. Verify that the Attestation Result contains a "cnf" claim (as defined in Section 3.1 of {{RFC8747}}) where
+   the key ID is the hash of the TAM public key used to verify the signature on the TEEP message,
+   and the hash is computed using the Digest Algorithm specified by one of the SUIT profiles
+   supported by the TEEP Agent (SHA-256 for the ones mandated in this document).
+
+   See Sections 3.4 and 6 of {{RFC8747}} for more discussion.
 
 # Cipher Suites {#ciphersuite}
 
@@ -1522,12 +1627,12 @@ with COSE_Sign or other COSE types in additional cipher suites.
 Any cipher suites without confidentiality protection can only be added if the
 associated specification includes a discussion of security considerations and
 applicability, since manifests may carry sensitive information. For example,
-Section 6 of {{I-D.ietf-teep-architecture}} permits implementations that
+Section 6 of {{RFC9397}} permits implementations that
 terminate transport security inside the TEE and if the transport security
 provides confidentiality then additional encryption might not be needed in
 the manifest for some use cases. For most use cases, however, manifest
 confidentiality will be needed to protect sensitive fields from the TAM as
-discussed in Section 9.8 of {{I-D.ietf-teep-architecture}}.
+discussed in Section 9.8 of {{RFC9397}}.
 
 The cipher suites defined above do not do encryption at the TEEP layer, but
 permit encryption of the SUIT payload using a mechanism such as {{I-D.ietf-suit-firmware-encryption}}.
@@ -1560,7 +1665,7 @@ in this specification. See Section 8.5.5 and Appendix B of {{RFC9052}} for more 
 Section 6.2 of that document.)
 
 To perform encryption with ECDH the TEEP Agent needs to be in possession of the public
-key of the recipient, i.e., the TAM. See Section 5 of {{I-D.ietf-teep-architecture}}
+key of the recipient, i.e., the TAM. See Section 5 of {{RFC9397}}
 for more discussion of TAM keys used by the TEEP Agent.
 
 This specification defines cipher suites for confidentiality protection of EATs and
@@ -1642,7 +1747,8 @@ Attestation
   An impersonation attack, where one TEEP Agent attempts to use the attestation
   payload of another TEEP Agent, can be prevented using a proof-of-possession
   approach.  The "cnf" claim is mandatory in the EAT profile for EAT for this
-  purpose.  See Section 6 of {{RFC8747}} and {{attestation-result}} of this document
+  purpose.  See Section 6 of {{RFC8747}} and {{attestation-result-tam}} and
+  {{attestation-result-agent}} of this document
   for more discussion.
 
 Trusted Component Binaries
@@ -1662,7 +1768,7 @@ Personalization Data
   is used.
 
 TEEP Broker
-: As discussed in section 6 of {{I-D.ietf-teep-architecture}},
+: As discussed in section 6 of {{RFC9397}},
   the TEEP protocol typically relies on a TEEP Broker to relay messages
   between the TAM and the TEEP Agent.  When the TEEP Broker is
   compromised it can drop messages, delay the delivery of messages,
@@ -1672,6 +1778,23 @@ TEEP Broker
   version of a Trusted Component. Information in the manifest ensures that TEEP
   Agents are protected against such downgrade attacks based on
   features offered by the manifest itself.
+
+Replay Protection
+: The TEEP protocol supports replay protection as follows.
+  The transport protocol under the TEEP protocol might provide replay
+  protection, but may be terminated in the TEEP Broker which is not trusted
+  by the TEEP Agent and so the TEEP protocol does replay protection itself.
+  If attestation of the TAM is used, the attestation freshness mechanism
+  provides replay protection for attested QueryRequest messages.
+  If non-attested QueryRequest messages are replayed, the TEEP Agent will generate
+  QueryResponse or Error messages, but the REE can already conduct Denial of Service
+  attacks against the TEE and/or the TAM even without the TEEP protocol.
+  QueryResponse messages have replay protection via attestation freshness mechanism,
+  or the token field in the message if attestation is not used.
+  Update messages have replay protection via the suit-manifest-sequence-number
+  (see Section 8.4.2 of {{I-D.ietf-suit-manifest}}).
+  Error and Success messages have replay protection via SUIT Reports and/or the token
+  field in the message, where a TAM can detect which message it is in response to.
 
 Trusted Component Signer Compromise
 : A TAM is responsible for vetting a Trusted Component and

@@ -2,7 +2,7 @@
 ; This cddl file is Auto-generated file from md file.
 ; Edit the md file and run make for generating this cddl file.
 ; Please do not forget to commit and push this cddl file to git repo
-; every time you have revised md file.
+; every time you have revised the md file.
 
 teep-message = $teep-message-type .within teep-message-framework
 
@@ -36,6 +36,9 @@ query-request = [
     ? supported-freshness-mechanisms => [ + $freshness-mechanism ],
     ? challenge => bstr .size (8..512),
     ? versions => [ + version ],
+    ? attestation-payload-format => text,
+    ? attestation-payload => bstr,
+    ? suit-reports => [ + bstr ],
     * $$query-request-extensions,
     * $$teep-option-extensions
   },
@@ -84,8 +87,8 @@ cose-alg-es256 = -7  ; ECDSA w/ SHA-256
 cose-alg-eddsa = -8  ; EdDSA
 
 ; suit-cose-profile
-$suit-cose-profile /= suit-sha256-es256-hpke-a128gcm
-$suit-cose-profile /= suit-sha256-eddsa-hpke-a128gcm
+$suit-cose-profile /= suit-sha256-es256-ecdh-a128gcm
+$suit-cose-profile /= suit-sha256-eddsa-ecdh-a128gcm
 
 ; freshness-mechanisms
 FRESHNESS_NONCE = 0
@@ -151,6 +154,7 @@ teep-error = [
      ? err-msg => text .size (1..128),
      ? supported-teep-cipher-suites => [ + $teep-cipher-suite ],
      ? supported-freshness-mechanisms => [ + $freshness-mechanism ],
+     ? challenge => bstr .size (8..512),
      ? versions => [ + version ],
      ? suit-reports => [ + SUIT_Report ],
      * $$teep-error-extensions,
@@ -166,6 +170,7 @@ ERR_UNSUPPORTED_FRESHNESS_MECHANISMS = 3
 ERR_UNSUPPORTED_MSG_VERSION = 4
 ERR_UNSUPPORTED_CIPHER_SUITES = 5
 ERR_BAD_CERTIFICATE = 6
+ERR_ATTESTATION_REQUIRED = 7
 ERR_CERTIFICATE_EXPIRED = 9
 ERR_TEMPORARY_ERROR = 10
 ERR_MANIFEST_PROCESSING_FAILED = 17
@@ -192,3 +197,4 @@ have-binary = 18
 suit-reports = 19
 token = 20
 supported-freshness-mechanisms = 21
+err-code = 23

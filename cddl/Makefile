@@ -8,8 +8,7 @@ TEEP_MESSAGES := \
 SUIT_MANIFESTS := \
 		../cbor/suit_uri.diag.bin \
 		../cbor/suit_integrated.diag.bin \
-		../cbor/suit_personalization.diag.bin \
-		../cbor/suit_unlink.diag.bin
+		../cbor/suit_personalization.diag.bin
 
 CONCATENATED_CDDL		:= check-draft-ietf-teep-protocol.cddl
 CONCATENATED_UNTAGGED_SUIT_CDDL	:= check-draft-ietf-suit-manifest.cddl
@@ -18,10 +17,11 @@ TEEP_PROTOCOL_CDDL		:= ../draft-ietf-teep-protocol.cddl
 SUIT_ENVELOPE_SHIM_CDDL := suit-envelope-shim.cddl
 SUIT_MANIFEST_CDDL		:= draft-ietf-suit-manifest.cddl
 SUIT_TRUST_DOMAINS_CDDL	:= draft-ietf-suit-trust-domains.cddl
+SUIT_ENCRYPTED_PAYLOADS_CDDL	:= draft-ietf-suit-firmware-encryption.cddl
 SUIT_REPORT_CDDL		:= draft-ietf-suit-report.cddl
-SUIT_MTI_CDDL			:= draft-moran-suit-mti-algorithms.cddl
-COSE_XML			:= rfc-8152-cose.xml
-COSE_CDDL			:= rfc-8152-cose.cddl
+SUIT_MTI_CDDL			:= draft-ietf-suit-mti.cddl
+COSE_XML			:= rfc-9052-cose.xml
+COSE_CDDL			:= rfc-9052-cose.cddl
 
 CDDLS				:= $(TEEP_PROTOCOL_CDDL)
 CDDLS				+= $(COSE_CDDL) $(SUIT_MANIFEST_CDDL) $(SUIT_TRUST_DOMAINS_CDDL) $(SUIT_REPORT_CDDL)
@@ -32,7 +32,7 @@ cat-cddl: $(CONCATENATED_CDDL)
 $(CONCATENATED_CDDL): $(TEEP_PROTOCOL_CDDL) $(CONCATENATED_UNTAGGED_SUIT_CDDL)
 	cat $^ > $@
 
-$(CONCATENATED_UNTAGGED_SUIT_CDDL): $(SUIT_ENVELOPE_SHIM_CDDL) $(SUIT_MANIFEST_CDDL) $(SUIT_TRUST_DOMAINS_CDDL) $(SUIT_REPORT_CDDL) $(SUIT_MTI_CDDL) $(COSE_CDDL)
+$(CONCATENATED_UNTAGGED_SUIT_CDDL): $(SUIT_ENVELOPE_SHIM_CDDL) $(SUIT_MANIFEST_CDDL) $(SUIT_TRUST_DOMAINS_CDDL) $(SUIT_REPORT_CDDL) $(SUIT_MTI_CDDL) $(SUIT_ENCRYPTED_PAYLOADS_CDDL) $(COSE_CDDL)
 	cat $^ > $@
 
 $(TEEP_MESSAGES) $(SUIT_MANIFESTS):
@@ -46,13 +46,12 @@ $(SUIT_TRUST_DOMAINS_CDDL):
 
 $(SUIT_REPORT_CDDL):
 	curl https://raw.githubusercontent.com/suit-wg/suit-report/main/draft-ietf-suit-report.cddl -o $@
-	# cat $^ | sed -e 's/suit-record-properties     => SUIT_Parameters/suit-record-properties     => \{ \+ SUIT_Parameters \}/g' -e 's/^  \+ SUIT_Param/  * SUIT_Param/' > $@
 
 $(SUIT_MTI_CDDL):
-	curl https://raw.githubusercontent.com/bremoran/suit-mti/c9a5a3105e94e71f73841e7794995d20aaad821e/draft-moran-suit-mti-algorithms.cddl -o $@
+	curl https://raw.githubusercontent.com/bremoran/suit-mti/main/draft-ietf-suit-mti.cddl -o $@
 
 $(COSE_XML):
-	curl https://www.ietf.org/archive/id/draft-ietf-cose-msg-24.xml -o $@
+	curl https://www.rfc-editor.org/rfc/rfc9052.xml -o $@
 
 $(COSE_CDDL): $(COSE_XML)
 	sed -n -e '/<artwork type="CDDL"/,/<\/artwork/ p' $< | sed -e '/<artwork type="CDDL"/ d' -e '/<\/artwork/ d' -e '/<\/section>/,/<figure title=""/ d' -e 's/\&gt;/>/g' > $@
